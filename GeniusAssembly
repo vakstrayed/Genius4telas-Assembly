@@ -1,8 +1,15 @@
+#	Bitmap Display:														#
+#	Unit Width/Height pixel = 32x32										#
+#	Display Width/Height pixel = 512x512								#
+#	Base address for display = heap (0x10040000)	
+
+
+
 .data 
 
 greenDown:	.word 0x00006400 #DarkGreen -> Verde apagado
 redDown:	.word 0x008B0000 #DarkRed -> Vermelho apagado
-telaJogo: 	.word 0x10040000 #Endereço inicial do bitmap em hexadecimal
+telaJogo: 	.word 0x10040000 #EndereÃ§o inicial do bitmap em hexadecimal
 yellowDown:	.word 0x00FF9900 #Amarelo apagado
 blueDown:	.word 0x00000066 #Azul apagado
 preto:		.word 0x00000000 #preto
@@ -21,31 +28,31 @@ victory:	.asciiz "Ganhou PORR@@@@@@ !!!!!"
 		syscall
 	.end_macro
 	
-	.macro printarLinha(%pixel, %cor) #Pixel é o pixel inicial da linha e cor é a cor da linha
-		add $t2, $zero, %pixel #contador do for que começa no valor do pixel		
+	.macro printarLinha(%pixel, %cor) #Pixel Ã© o pixel inicial da linha e cor Ã© a cor da linha
+		add $t2, $zero, %pixel #contador do for que comeÃ§a no valor do pixel		
 		addi $t3, $t2, 32  #limite do loop -> pixel + 32
 		
-		lw $t4, telaJogo #Carrega endereço onde começara o mapa para o registrador $t2
+		lw $t4, telaJogo #Carrega endereÃ§o onde comeÃ§ara o mapa para o registrador $t2
 		lacoLinha: 
-			beq $t3, $t2, fimLacoLinha #condição de saida do laco
-			sw  %cor, 0($t2) #Insere o valor armazenado em $t3 no endereço de memoria armazenado em $t2 com 0 de deslocamento
-			addi $t4, $t4, 4 #Incrementa o endereço armazenado em $t2 em 4 -> $t2 = $t2 + 4
-			addi $t2, $t2, 4 # Incrementa o contador auxiliar do laço que está armazenado em $t1 -> $t1 = $t1 + 4			
-			j lacoLinha # volta para o começo do laço
+			beq $t3, $t2, fimLacoLinha #condiÃ§Ã£o de saida do laco
+			sw  %cor, 0($t2) #Insere o valor armazenado em $t3 no endereÃ§o de memoria armazenado em $t2 com 0 de deslocamento
+			addi $t4, $t4, 4 #Incrementa o endereÃ§o armazenado em $t2 em 4 -> $t2 = $t2 + 4
+			addi $t2, $t2, 4 # Incrementa o contador auxiliar do laÃ§o que estÃ¡ armazenado em $t1 -> $t1 = $t1 + 4			
+			j lacoLinha # volta para o comeÃ§o do laÃ§o
 		fimLacoLinha: 
 	.end_macro
 	
 	.macro printarQuadrado(%pixel,%cor)
-		add $t7, $zero, %pixel #contador do for que começa no valor do pixel		
+		add $t7, $zero, %pixel #contador do for que comeÃ§a no valor do pixel		
 		addi $t5, $t7, 32  #limite do loop -> pixel + 32
 		
-		lw $t6, telaJogo #Carrega endereço onde começara o mapa para o registrador $t2
+		lw $t6, telaJogo #Carrega endereÃ§o onde comeÃ§ara o mapa para o registrador $t2
 		add $t6, $t6, %pixel 
 		lacoColuna:
 			beq $t5, $t7, fimLacoColuna  #Condicao para saida do laco
 			printarLinha($t6, %cor)	
 			addi $t6, $t6, 64 #contador para pular linha
-			addi $t7, $t7, 4 # Incrementa o contador auxiliar do laço que está armazenado em $t1 -> $t1 = $t1 + 4			
+			addi $t7, $t7, 4 # Incrementa o contador auxiliar do laÃ§o que estÃ¡ armazenado em $t1 -> $t1 = $t1 + 4			
 			j lacoColuna
 		fimLacoColuna:
 	.end_macro
@@ -79,16 +86,16 @@ victory:	.asciiz "Ganhou PORR@@@@@@ !!!!!"
 	
 	.macro gerarValores()
 		li $a1, 4 # gerar numeros no intervalo de 0-3
-		li $v0, 42 # salva a operação do syscall
+		li $v0, 42 # salva a operaÃ§Ã£o do syscall
 		addi $t7, $zero, 20 #contador para quantidade de cores do jogo
-		add $t0, $zero, $sp #copia do endereço da pilha
+		add $t0, $zero, $sp #copia do endereÃ§o da pilha
 		gerador:
-			beq $t7, 0, fimGerador #condicao para saida do laço
+			beq $t7, 0, fimGerador #condicao para saida do laÃ§o
 			syscall #syscall para gerar numero aleatorio
 			sw $a0, 0($t0) #carregar numero gerado na pilha
-			addi $t0, $t0, 4 #incrementar o endereço de memoria da pilha
-			addi $t7, $t7, -1 #decrementar o contador do laço
-			j gerador #volta para o inicio do laço	
+			addi $t0, $t0, 4 #incrementar o endereÃ§o de memoria da pilha
+			addi $t7, $t7, -1 #decrementar o contador do laÃ§o
+			j gerador #volta para o inicio do laÃ§o	
 		fimGerador:		
 	.end_macro
 	
