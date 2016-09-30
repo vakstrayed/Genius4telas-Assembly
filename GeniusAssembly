@@ -1,0 +1,284 @@
+.data 
+
+greenDown:	.word 0x00006400 #DarkGreen -> Verde apagado
+redDown:	.word 0x008B0000 #DarkRed -> Vermelho apagado
+telaJogo: 	.word 0x10040000 #Endereço inicial do bitmap em hexadecimal
+yellowDown:	.word 0x00FF9900 #Amarelo apagado
+blueDown:	.word 0x00000066 #Azul apagado
+preto:		.word 0x00000000 #preto
+greenUp:	.word 0x0000FF00 #verde aceso
+redUp:		.word 0x00FF0000 #vermelho aceso
+yellowUp:	.word 0x00FFFF00 #amarelo aceso2
+blueUp:		.word 0x0066FFFF #azul aceso
+msg:		.asciiz "Digite uma cor: \n(0 - Verde)\n(1 - Amarelo)\n(2 - Vermelho)\n(3 - Azul)"
+victory:	.asciiz "Ganhou PORR@@@@@@ !!!!!"
+
+.text
+	
+	.macro espera()
+		li $v0, 32
+		li $a0, 350
+		syscall
+	.end_macro
+	
+	.macro printarLinha(%pixel, %cor) #Pixel é o pixel inicial da linha e cor é a cor da linha
+		add $t2, $zero, %pixel #contador do for que começa no valor do pixel		
+		addi $t3, $t2, 32  #limite do loop -> pixel + 32
+		
+		lw $t4, telaJogo #Carrega endereço onde começara o mapa para o registrador $t2
+		lacoLinha: 
+			beq $t3, $t2, fimLacoLinha #condição de saida do laco
+			sw  %cor, 0($t2) #Insere o valor armazenado em $t3 no endereço de memoria armazenado em $t2 com 0 de deslocamento
+			addi $t4, $t4, 4 #Incrementa o endereço armazenado em $t2 em 4 -> $t2 = $t2 + 4
+			addi $t2, $t2, 4 # Incrementa o contador auxiliar do laço que está armazenado em $t1 -> $t1 = $t1 + 4			
+			j lacoLinha # volta para o começo do laço
+		fimLacoLinha: 
+	.end_macro
+	
+	.macro printarQuadrado(%pixel,%cor)
+		add $t7, $zero, %pixel #contador do for que começa no valor do pixel		
+		addi $t5, $t7, 32  #limite do loop -> pixel + 32
+		
+		lw $t6, telaJogo #Carrega endereço onde começara o mapa para o registrador $t2
+		add $t6, $t6, %pixel 
+		lacoColuna:
+			beq $t5, $t7, fimLacoColuna  #Condicao para saida do laco
+			printarLinha($t6, %cor)	
+			addi $t6, $t6, 64 #contador para pular linha
+			addi $t7, $t7, 4 # Incrementa o contador auxiliar do laço que está armazenado em $t1 -> $t1 = $t1 + 4			
+			j lacoColuna
+		fimLacoColuna:
+	.end_macro
+	
+	
+	.macro printarTelaApagada()
+		addi $t0, $zero, 0 #primeiro quadrante 
+		lw $t1, greenDown #cor verde apagada no registrador $s1
+		printarQuadrado($t0, $t1)
+		
+		addi $t0, $zero, 512 #terceiro quadrante
+		lw $t1, redDown #cor vermelha apagada no registrador $s1
+		printarQuadrado($t0, $t1)
+				
+		addi $t0, $zero, 32 #segundo quadrante
+		lw $t1, yellowDown #cor amarela apagada no registrador $s1
+		printarQuadrado($t0, $t1)
+		
+		addi $t0, $zero, 544 #quarto quadrante
+		lw $t1, blueDown #cor azul apagada no registrador $s1
+		printarQuadrado($t0, $t1)
+	.end_macro
+	
+	.macro printarAceso(%aceso, %cor2) #macro para apagar cor que estava acesa e acender a proxiuma
+		printarTelaApagada()
+		
+		printarQuadrado(%aceso, %cor2) #acende proxima
+		
+		espera()
+	.end_macro
+	
+	.macro gerarValores()
+		li $a1, 4 # gerar numeros no intervalo de 0-3
+		li $v0, 42 # salva a operação do syscall
+		addi $t7, $zero, 20 #contador para quantidade de cores do jogo
+		add $t0, $zero, $sp #copia do endereço da pilha
+		gerador:
+			beq $t7, 0, fimGerador #condicao para saida do laço
+			syscall #syscall para gerar numero aleatorio
+			sw $a0, 0($t0) #carregar numero gerado na pilha
+			addi $t0, $t0, 4 #incrementar o endereço de memoria da pilha
+			addi $t7, $t7, -1 #decrementar o contador do laço
+			j gerador #volta para o inicio do laço	
+		fimGerador:		
+	.end_macro
+	
+	
+	
+	.macro corSelecionada(%valor)
+		beq %valor, 0, green
+		beq %valor, 1, yellow
+		beq %valor, 2, red
+		beq %valor, 3, blue
+		green:
+			lw $k1, greenUp
+			printarAceso($zero, $k1)
+			j exit
+		red:
+			addi $k0, $zero, 512
+			lw $k1, redUp
+			printarAceso($k0, $k1)
+			j exit
+		yellow:
+			addi $k0, $zero, 32
+			lw $k1, yellowUp
+			printarAceso($k0, $k1)
+			j exit
+		blue:
+			addi $k0, $zero, 544
+			lw $k1, blueUp
+			printarAceso($k0, $k1)
+			j exit
+		exit:
+	.end_macro
+	
+	main:
+		gerarValores()
+		addi $s0, $zero, 0 #variavel que verifica o andamento do jogo
+		addi $s1, $zero, 0
+		li $s6, 0
+		add $s2, $zero, $sp
+		add $s5, $zero, $sp
+		play:
+			bltz $s0, win 
+			addi $s7, $zero, 1
+			add $s4, $s1, $zero
+			telas:
+					beq $s1, $s7, fimLaco
+					lw $s3, 0($s2)
+					addi $s2, $s2, 4
+					corSelecionada($s3)
+					addi $s1, $s1, 1
+					j telas
+					
+				fimLaco:
+					add $s2, $zero, $sp
+					printarTelaApagada()
+				laco2:
+					beq $s4, $s7, fimLaco2
+					lw $s3, 0($s5)
+					addi $s5, $s5, 4
+					li $v0, 51
+					la $a0, msg
+					syscall
+					bne $a0, $s3, lose
+					addi $s4, $s4, 1
+					j laco2
+				fimLaco2:
+				add $s6, $s6, 1
+				add $s5, $zero, $sp
+				addi $s7, $s7, 1
+				li $s4, 0
+				add $s1 $zero, $zero
+				beq $s6, 3, win
+				j telas
+			sairTelas:		
+		lose:
+			addi $s7, $zero, 0
+	soloInTheEnd:
+		beq $s7, 2, fimSolo
+			addi $a0, $zero, 62 # D
+			addi $a1, $zero, 500
+			addi $a2, $zero, 24
+			addi $a3, $zero, 127
+			addi $v0, $zero, 33
+			syscall
+			addi $a0, $zero, 70 # A
+			addi $a1, $zero, 500
+			addi $a2, $zero, 0
+			addi $a3, $zero, 127
+			addi $v0, $zero, 33
+			syscall
+			addi $a0, $zero, 70 # A
+			addi $a1, $zero, 500
+			addi $a2, $zero, 0
+			addi $a3, $zero, 127
+			addi $v0, $zero, 33
+			syscall
+			addi $a0, $zero, 66 # F
+			addi $a1, $zero, 500
+			addi $a2, $zero, 0
+			addi $a3, $zero, 127
+			addi $v0, $zero, 33
+			syscall
+			addi $a0, $zero, 65 # F
+			addi $a1, $zero, 500
+			addi $a2, $zero, 0
+			addi $a3, $zero, 127
+			addi $v0, $zero, 33
+			syscall
+			addi $a0, $zero, 65 # F
+			addi $a1, $zero, 500
+			addi $a2, $zero, 0
+			addi $a3, $zero, 127
+			addi $v0, $zero, 33
+			syscall
+			addi $a0, $zero, 65 # F
+			addi $a1, $zero, 300
+			addi $a2, $zero, 0
+			addi $a3, $zero, 127
+			addi $v0, $zero, 33
+			syscall
+			addi $a0, $zero, 65 # F
+			addi $a1, $zero, 250
+			addi $a2, $zero, 0
+			addi $a3, $zero, 127
+			addi $v0, $zero, 33
+			syscall
+			addi $a0, $zero, 66 # F
+			addi $a1, $zero, 250
+			addi $a2, $zero, 0
+			addi $a3, $zero, 127
+			addi $v0, $zero, 33
+			syscall
+			addi $a0, $zero, 62 # F
+			addi $a1, $zero, 400
+			addi $a2, $zero, 0
+			addi $a3, $zero, 127
+			addi $v0, $zero, 33
+			syscall
+		addi $s7, $s7, 1
+		j soloInTheEnd
+	fimSolo:
+		addi $a0, $zero, 70 # F
+		addi $a2, $zero, 0
+		addi $a3, $zero, 127
+		addi $v0, $zero, 33
+		syscall
+		addi $a0, $zero, 70 # F
+		addi $a1, $zero, 400
+		addi $a2, $zero, 0
+		addi $a3, $zero, 127
+		addi $v0, $zero, 33
+		syscall
+		addi $a0, $zero, 66 # F
+		addi $a1, $zero, 400
+		addi $a2, $zero, 0
+		addi $a3, $zero, 127
+		addi $v0, $zero, 33
+		syscall
+		addi $a0, $zero, 66 # F
+		addi $a1, $zero, 400
+		addi $a2, $zero, 0
+		addi $a3, $zero, 127
+		addi $v0, $zero, 33
+		syscall
+		j fim
+	
+	
+		win:
+			addi $a0, $zero, 65 # F
+			addi $a1, $zero, 250
+			addi $a2, $zero, 0
+			addi $a3, $zero, 127
+			addi $v0, $zero, 33
+			syscall
+			addi $a0, $zero, 66 # F
+			addi $a1, $zero, 250
+			addi $a2, $zero, 0
+			addi $a3, $zero, 127
+			addi $v0, $zero, 33
+			syscall
+			addi $a0, $zero, 62 # F
+			addi $a1, $zero, 400
+			addi $a2, $zero, 0
+			addi $a3, $zero, 127
+			addi $v0, $zero, 33
+			syscall
+			li $v0, 50
+			la $a0, victory
+			syscall
+
+	fim:
+
+
+				
